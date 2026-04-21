@@ -13,7 +13,7 @@ DexGen trains a Conditional DDIM (Denoising Diffusion Implicit Model) with a U-N
 - **DDIM sampling** — fast, deterministic inference
 - **Interactive gallery GUI** — dropdown menus for attribute selection; displays generated sprites alongside generation history
 
-## Architectur (TBD)
+## Architecture (TBD)
 
 ```
 Attributes (type, color, shape)
