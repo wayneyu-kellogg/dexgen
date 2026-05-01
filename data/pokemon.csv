@@ -694,6 +694,7 @@ id,name,primary_type,secondary_type,color,shape,sprite_file
 693,clawitzer,water,,blue,squiggle,sprites/0693.png
 694,helioptile,electric,normal,yellow,upright,sprites/0694.png
 695,heliolisk,electric,normal,yellow,upright,sprites/0695.png
+696,tyrunt,rock,dragon,brown,upright,sprites/0696.png
 697,tyrantrum,rock,dragon,red,upright,sprites/0697.png
 698,amaura,rock,ice,blue,quadruped,sprites/0698.png
 699,aurorus,rock,ice,blue,quadruped,sprites/0699.png
