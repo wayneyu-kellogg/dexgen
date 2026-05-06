@@ -1,37 +1,55 @@
 # DexGen — Multi-Attribute Conditional Diffusion for Sprite Synthesis
 
-A conditional diffusion model that generates Pokémon-style sprites from categorical attributes such as type, color, and body shape.
+A conditional diffusion model that generates Pokémon-style sprites from categorical attributes: type, color, and body shape.
 
 ## Overview
 
-DexGen trains a Conditional DDIM (Denoising Diffusion Implicit Model) with a U-Net backbone on sprites and metadata sourced from [PokeAPI](https://pokeapi.co/docs/v2#pokemon-section). At inference time, a user selects attributes via a web UI and the model synthesizes a novel sprite conditioned on those inputs.
+DexGen trains a Conditional DDIM (Denoising Diffusion Implicit Model) with a U-Net backbone on 1,024 sprites and metadata sourced from [PokeAPI](https://pokeapi.co/docs/v2#pokemon-section). At inference time, the model synthesizes a novel 64×64 sprite conditioned on a user-specified combination of attributes.
 
-## Features
+## Architecture
 
-- **Automated data pipeline** — fetches sprites and categorical metadata directly from PokeAPI
-- **Conditional U-Net** — attribute embeddings injected into the U-Net to guide the reverse diffusion process
-- **DDIM sampling** — fast, deterministic inference
-- **Interactive gallery GUI** — dropdown menus for attribute selection; displays generated sprites alongside generation history
-
-## Architecture (TBD)
-
-```
-Attributes (type, color, shape)
-        │
-  Embedding Layers
-        │
-   Condition Vector
-        │
-U-Net (DDPM backbone)  ←──  Noisy image xₜ
-        │
-   Predicted noise εθ
-        │
-  DDIM Sampler  →  Generated sprite x₀
-```
+- **ConditionEmbedding** — embeds three categorical attributes into a single condition vector.
+- **SinusoidalPositionEmbeddings** — encodes the diffusion timestep as a fixed sinusoidal vector of dimension `cond_dim`; added element-wise to the attribute condition vector.
+- **ResBlock** — `Conv2d → GroupNorm(8) → SiLU → + cond_proj → Conv2d → GroupNorm(8) → SiLU → + residual`; condition is projected via `Linear(cond_dim, out_channels)` and broadcast over spatial dims
+- **U-Net** — encoder [64→64→128→256] with 2× strided downsampling, bottleneck ResBlock, decoder [512→256→384→128→192→64] with bilinear upsampling and skip connections, output `Conv2d(64, 3)`
+- **DiffusionSchedule** — cosine noise schedule (T=1000, offset=0.008): `α̅ₜ = cos²(((t/T + s)/(1+s)) · π/2)`, forward process `xₜ = √α̅ₜ · x₀ + √(1−α̅ₜ) · ε`
+- **DDIM Sampler** — deterministic reverse: predict `x̂₀`, clamp to `[−1, 1]`, re-derive `ε`, step to `xₜ₋₁`
 
 ## Data
 
-Sprites and metadata are sourced from [PokeAPI](https://pokeapi.co/). The pipeline downloads:
-- Front-facing sprites (96×96 px)
-- Categorical attributes: Primary Type, Color, Body Shape
+Sprites and metadata sourced from [PokeAPI](https://pokeapi.co/). The dataset contains **1,024 Pokémon** (Gen 1–9) with:
+- Front-facing sprites converted to RGB on a white background, resized to **64×64 px**
+- **18 primary types**: grass, fire, water, bug, normal, poison, electric, ground, fairy, fighting, psychic, rock, ghost, ice, dragon, dark, steel, flying
+- **10 colors**: green, red, blue, white, brown, yellow, purple, pink, gray, black
+- **14 body shapes**: quadruped, upright, armor, squiggle, bug-wings, wings, humanoid, legs, blob, heads, tentacles, arms, fish, ball
 
+Training augmentations: random horizontal flip, color jitter (brightness/contrast/saturation ±0.2), random rotation ±15°.
+
+## Training
+
+| Hyperparameter | Value |
+|---|---|
+| Image size | 64×64 |
+| Batch size | 64 |
+| Epochs | 500 |
+| Optimizer | Adam, lr=1e-4 |
+| Learning Rate | 1e-4 |
+| Condition dim | 128 |
+| Diffusion steps T | 1,000 |
+| Loss | MSE on predicted noise |
+
+Hyperparameters were selected via grid search over `lr ∈ {1e-3, 1e-4}`, `cond_dim ∈ {32, 64, 128}`, `batch_size ∈ {32, 64}`, `num_epochs ∈ {50, 100, 200, 500}`, then the final model was trained at `cond_dim=128` for 500 epochs.
+
+## Saved Checkpoint
+
+`dexgen.pt` stores:
+- `model_state_dict` — base model weights
+- `ema_model_state_dict` — EMA-smoothed weights (used for inference)
+- `type_to_idx`, `color_to_idx`, `shape_to_idx` — vocabulary mappings
+- `cond_dim` — condition vector dimensionality (128)
+
+## Dependencies
+
+```
+torch torchvision pandas Pillow numpy matplotlib cairosvg
+```
