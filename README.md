@@ -1,81 +1,28 @@
 # DexGen — Multi-Attribute Conditional Diffusion for Sprite Synthesis
 
-A conditional diffusion model that generates Pokémon-style sprites from categorical attributes: type, color, and body shape.
+DexGen is a conditional generative model that synthesizes novel Pokémon-style sprites from user-specified categorical attributes: primary type, color, and body shape. The model combines a U-Net denoising backbone with a cosine-schedule DDIM sampler, trained on 1,024 sprites sourced from PokeAPI. At inference time, any combination of 18 types × 10 colors × 14 shapes can be queried to produce a unique 64×64 sprite.
 
-## Overview
+## Installation & Run Instructions
 
-DexGen trains a Conditional DDIM (Denoising Diffusion Implicit Model) with a U-Net backbone on 1,024 sprites and metadata sourced from [PokeAPI](https://pokeapi.co/docs/v2#pokemon-section). At inference time, the model synthesizes a novel 64×64 sprite conditioned on a user-specified combination of attributes.
-
-## Architecture
-
-- **ConditionEmbedding** — embeds three categorical attributes into a single condition vector.
-- **SinusoidalPositionEmbeddings** — encodes the diffusion timestep as a fixed sinusoidal vector of dimension `cond_dim`; added element-wise to the attribute condition vector.
-- **ResBlock** — `Conv2d → GroupNorm(8) → SiLU → + cond_proj → Conv2d → GroupNorm(8) → SiLU → + residual`; condition is projected via `Linear(cond_dim, out_channels)` and broadcast over spatial dims
-- **U-Net** — encoder [64→64→128→256] with 2× strided downsampling, bottleneck ResBlock, decoder [512→256→384→128→192→64] with bilinear upsampling and skip connections, output `Conv2d(64, 3)`
-- **DiffusionSchedule** — cosine noise schedule (T=1000, offset=0.008): `α̅ₜ = cos²(((t/T + s)/(1+s)) · π/2)`, forward process `xₜ = √α̅ₜ · x₀ + √(1−α̅ₜ) · ε`
-- **DDIM Sampler** — deterministic reverse: predict `x̂₀`, clamp to `[−1, 1]`, re-derive `ε`, step to `xₜ₋₁`
-
-## Data
-
-Sprites and metadata sourced from [PokeAPI](https://pokeapi.co/). The dataset contains **1,024 Pokémon** (Gen 1–9) with:
-- Front-facing sprites converted to RGB on a white background, resized to **64×64 px**
-- **18 primary types**: grass, fire, water, bug, normal, poison, electric, ground, fairy, fighting, psychic, rock, ghost, ice, dragon, dark, steel, flying
-- **10 colors**: green, red, blue, white, brown, yellow, purple, pink, gray, black
-- **14 body shapes**: quadruped, upright, armor, squiggle, bug-wings, wings, humanoid, legs, blob, heads, tentacles, arms, fish, ball
-
-Training augmentations: random horizontal flip, color jitter (brightness/contrast/saturation ±0.2), random rotation ±15°.
-
-## Training
-
-| Hyperparameter | Value |
-|---|---|
-| Image size | 64×64 |
-| Batch size | 64 |
-| Epochs | 500 |
-| Optimizer | Adam, lr=1e-4 |
-| Learning Rate | 1e-4 |
-| Condition dim | 128 |
-| Diffusion steps T | 1,000 |
-| Loss | MSE on predicted noise |
-
-Hyperparameters were selected via grid search over `lr ∈ {1e-3, 1e-4}`, `cond_dim ∈ {32, 64, 128}`, `batch_size ∈ {32, 64}`, `num_epochs ∈ {50, 100, 200, 500}`, then the final model was trained at `cond_dim=128` for 500 epochs.
-
-## Saved Checkpoint
-
-`dexgen.pt` stores:
-- `model_state_dict` — base model weights
-- `ema_model_state_dict` — EMA-smoothed weights (used for inference)
-- `type_to_idx`, `color_to_idx`, `shape_to_idx` — vocabulary mappings
-- `cond_dim` — condition vector dimensionality (128)
-
-## Fetching the Data
-
-Sprite images and metadata are not included in the repository. Fetch them from [PokeAPI](https://pokeapi.co/) by running:
-
-```sh
+```bash
+pip install torch torchvision pandas Pillow numpy matplotlib cairosvg
 python data/fetch.py
 ```
 
-This downloads `data/sprites/*.png` (front-facing sprites for Gen 1–9) and writes `data/pokemon.csv` with type, color, and shape metadata. Fetching all 1,025 Pokémon takes a few minutes; progress is printed every 50 entries.
+`fetch.py` downloads `data/sprites/*.png` and writes `data/pokemon.csv`. Fetching all Pokémon takes a few minutes; progress is printed every 50 entries.
 
-## Running the Model
+**Option 1 — Train from scratch:** Open `model_training.ipynb` and run all cells top to bottom. Skip the Grid Search and Load Checkpoint cells.
 
-### Option 1 — Run the notebook sequentially
-
-Open `model_training.ipynb` and run all cells top to bottom. This will download the data, train the model from scratch, and generate a sample image at the end. **Skip the Load Checkpoint cell** — running it will override the freshly trained model with the saved weights.
-
-### Option 2 — Load the checkpoint and run inference
-
-Open `model_training.ipynb` and run the **Load Checkpoint** cell, then the inference cell below it. This skips training entirely and generates sprites directly from `dexgen.pt`.
+**Option 2 — Load checkpoint and run inference:** Run the Load Checkpoint cell, then the inference cell below it.
 
 Valid attribute values:
 - **type**: grass, fire, water, bug, normal, poison, electric, ground, fairy, fighting, psychic, rock, ghost, ice, dragon, dark, steel, flying
 - **color**: green, red, blue, white, brown, yellow, purple, pink, gray, black
 - **shape**: quadruped, upright, armor, squiggle, bug-wings, wings, humanoid, legs, blob, heads, tentacles, arms, fish, ball
 
-## Sample Images
+## Results
 
-| Image | Type | Color | Shape|
+| Image | Type | Color | Shape |
 |---|---|---|---|
 |<img width="64" height="64" alt="water_blue_armor" src="https://github.com/user-attachments/assets/c87bbec0-1a1e-4f8f-ae7d-18a6b8a5eb34" />|Water|Blue|Arms|
 |<img width="64" height="64" alt="fire_red_heads" src="https://github.com/user-attachments/assets/b1722b0a-3983-4c98-bfec-96f5bfdc7b3f" />|Fire|Red|Heads|
@@ -83,11 +30,18 @@ Valid attribute values:
 |<img width="64" height="64" alt="electric_yellow_bug-wings" src="https://github.com/user-attachments/assets/9b7fbc2e-06cb-40f7-a729-d532d4f4df5a" />|Electric|Yellow|Wings|
 |<img width="64" height="64" alt="ghost_black_blob" src="https://github.com/user-attachments/assets/bdcec1ed-5181-400d-988a-6735e4ce1f5f" />|Ghost|Black|Blob|
 
+## Extra Criteria
 
+**Hyperparameter Tuning Strategies** — A full grid search was run over learning rate {1e-3, 1e-4}, condition dimension {32, 64, 128}, batch size {32, 64}, and training epochs {50, 100, 200, 500} before committing to the final configuration (cond_dim=128, lr=1e-4, 500 epochs). This identified that a larger condition embedding meaningfully improved generation quality.
 
+**Creative Latent Space Exploration** — The model conditions on three independent categorical attributes simultaneously. Each attribute gets its own embedding layer, projected into a shared condition vector and fused with sinusoidal timestep embeddings. This allows compositional generation: any valid (type, color, shape) triple maps to a distinct region of the learned distribution, enabling structured latent space traversal across 2,520 possible attribute combinations.
 
-## Dependencies
+## Difficulties
 
-```
-torch torchvision pandas Pillow numpy matplotlib cairosvg
-```
+**Small dataset with high attribute diversity** — 1,024 samples spread across 18 types and 14 shapes left many attribute combinations with very few examples. Attempted to address with aggressive augmentation (horizontal flip, color jitter, random rotation) and EMA smoothing to stabilize training and reduce overfitting.
+
+**Unstable DDIM denoising** — Early sampling runs produced washed-out or noisy images because the predicted x̂₀ occasionally drifted outside the valid pixel range, compounding across reverse steps. Fixed by clamping x̂₀ ∈ [−1, 1] at each step and re-deriving the noise vector from the clamped estimate before computing the next step.
+
+**Conditioning architecture design** — Injecting per-attribute semantics and a per-step timestep signal into every ResBlock required some thought around architecture. The solution was to project the condition vector (attribute + time) into each ResBlock's channel dimension and broadcast it spatially, rather than concatenating to the image channels.
+
+**Time constraints** — The original plan included a Gallery GUI for interactive sprite generation. Due to time constraints, the GUI was not completed; focus shifted instead to deeper investment in hyperparameter tuning and creative latent space exploration.
