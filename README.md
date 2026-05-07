@@ -75,7 +75,16 @@ Valid attribute values:
 
 ## Sample Images
 
-<!-- Add generated sample images and their conditions here -->
+| Image | Type | Color | Shape|
+|---|---|---|---|
+|<img width="64" height="64" alt="water_blue_armor" src="https://github.com/user-attachments/assets/c87bbec0-1a1e-4f8f-ae7d-18a6b8a5eb34" />|Water|Blue|Arms|
+|<img width="64" height="64" alt="fire_red_heads" src="https://github.com/user-attachments/assets/b1722b0a-3983-4c98-bfec-96f5bfdc7b3f" />|Fire|Red|Heads|
+|<img width="64" height="64" alt="dragon_blue_armor" src="https://github.com/user-attachments/assets/f60d38d7-2a90-4b72-b667-440400b4e9f5" />|Dragon|Blue|Armor|
+|<img width="64" height="64" alt="electric_yellow_bug-wings" src="https://github.com/user-attachments/assets/9b7fbc2e-06cb-40f7-a729-d532d4f4df5a" />|Electric|Yellow|Wings|
+|<img width="64" height="64" alt="ghost_black_blob" src="https://github.com/user-attachments/assets/bdcec1ed-5181-400d-988a-6735e4ce1f5f" />|Ghost|Black|Blob|
+
+
+
 
 ## Dependencies
 
