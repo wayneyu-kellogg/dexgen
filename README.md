@@ -48,6 +48,35 @@ Hyperparameters were selected via grid search over `lr ∈ {1e-3, 1e-4}`, `cond_
 - `type_to_idx`, `color_to_idx`, `shape_to_idx` — vocabulary mappings
 - `cond_dim` — condition vector dimensionality (128)
 
+## Fetching the Data
+
+Sprite images and metadata are not included in the repository. Fetch them from [PokeAPI](https://pokeapi.co/) by running:
+
+```sh
+python data/fetch.py
+```
+
+This downloads `data/sprites/*.png` (front-facing sprites for Gen 1–9) and writes `data/pokemon.csv` with type, color, and shape metadata. Fetching all 1,025 Pokémon takes a few minutes; progress is printed every 50 entries.
+
+## Running the Model
+
+### Option 1 — Run the notebook sequentially
+
+Open `model_training.ipynb` and run all cells top to bottom. This will download the data, train the model from scratch, and generate a sample image at the end. **Skip the Load Checkpoint cell** — running it will override the freshly trained model with the saved weights.
+
+### Option 2 — Load the checkpoint and run inference
+
+Open `model_training.ipynb` and run the **Load Checkpoint** cell, then the inference cell below it. This skips training entirely and generates sprites directly from `dexgen.pt`.
+
+Valid attribute values:
+- **type**: grass, fire, water, bug, normal, poison, electric, ground, fairy, fighting, psychic, rock, ghost, ice, dragon, dark, steel, flying
+- **color**: green, red, blue, white, brown, yellow, purple, pink, gray, black
+- **shape**: quadruped, upright, armor, squiggle, bug-wings, wings, humanoid, legs, blob, heads, tentacles, arms, fish, ball
+
+## Sample Images
+
+<!-- Add generated sample images and their conditions here -->
+
 ## Dependencies
 
 ```
